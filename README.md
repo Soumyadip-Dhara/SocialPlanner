@@ -1,6 +1,6 @@
-# Gatherly — Social Planning, Ordering & Expense Splitting Platform
+# Plannivo — Social Planning, Ordering & Expense Splitting Platform
 
-Gatherly is a production-quality web application for planning group events, managing budgets, splitting expenses, and coordinating activities.
+Plannivo is a production-quality web application for planning group events, managing budgets, splitting expenses, and coordinating activities.
 
 ## Technology Stack
 
@@ -16,17 +16,17 @@ Gatherly is a production-quality web application for planning group events, mana
 ## Project Structure
 
 ```
-Gatherly/
+Plannivo/
 ├── src/
-│   ├── Gatherly.Api/           # Controllers, Middleware, Extensions
-│   ├── Gatherly.Services/      # Business logic (Service layer)
-│   ├── Gatherly.Repositories/  # Data access, EF Core, entities
-│   └── Gatherly.Contracts/     # DTOs shared across layers
+│   ├── Plannivo.Api/           # Controllers, Middleware, Extensions
+│   ├── Plannivo.Services/      # Business logic (Service layer)
+│   ├── Plannivo.Repositories/  # Data access, EF Core, entities
+│   └── Plannivo.Contracts/     # DTOs shared across layers
 ├── tests/
-│   ├── Gatherly.UnitTests/
-│   └── Gatherly.IntegrationTests/
+│   ├── Plannivo.UnitTests/
+│   └── Plannivo.IntegrationTests/
 ├── frontend/
-│   └── gatherly-ui/            # Angular 20 application
+│   └── plannivo-ui/            # Angular 20 application
 ├── docker/
 │   ├── docker-compose.yml
 │   └── Dockerfile.api
@@ -55,25 +55,25 @@ Swagger UI: `http://localhost:8080/swagger`
 
 1. **Start PostgreSQL**
    ```bash
-   docker run -e POSTGRES_USER=gatherly -e POSTGRES_PASSWORD=gatherly_secret \
-     -e POSTGRES_DB=gatherly_dev -p 5432:5432 postgres:17-alpine
+   docker run -e POSTGRES_USER=plannivo -e POSTGRES_PASSWORD=plannivo_secret \
+     -e POSTGRES_DB=plannivo_dev -p 5432:5432 postgres:17-alpine
    ```
 
 2. **Apply EF Core migrations**
    ```bash
-   cd src/Gatherly.Api
+   cd src/Plannivo.Api
    dotnet ef database update
    ```
 
 3. **Run the API**
    ```bash
-   cd src/Gatherly.Api
+   cd src/Plannivo.Api
    dotnet run
    ```
 
 4. **Run the frontend**
    ```bash
-   cd frontend/gatherly-ui
+   cd frontend/plannivo-ui
    npm install
    ng serve
    ```
@@ -82,10 +82,10 @@ Swagger UI: `http://localhost:8080/swagger`
 
 ```bash
 # Unit tests (no database required)
-dotnet test tests/Gatherly.UnitTests
+dotnet test tests/Plannivo.UnitTests
 
 # Integration tests (no database required — uses InMemory EF Core)
-dotnet test tests/Gatherly.IntegrationTests
+dotnet test tests/Plannivo.IntegrationTests
 ```
 
 ## Architecture
@@ -146,8 +146,8 @@ Controller -> Service -> Repository -> PostgreSQL
 |----------|-------------|---------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string | — |
 | `JwtSettings__SecretKey` | JWT signing key (min 32 chars) | — |
-| `JwtSettings__Issuer` | JWT issuer | `Gatherly` |
-| `JwtSettings__Audience` | JWT audience | `GatherlyUsers` |
+| `JwtSettings__Issuer` | JWT issuer | `Plannivo` |
+| `JwtSettings__Audience` | JWT audience | `PlannivoUsers` |
 | `JwtSettings__AccessTokenExpiryMinutes` | Access token TTL | `15` |
 | `JwtSettings__RefreshTokenExpiryDays` | Refresh token TTL | `7` |
 | `Cors__AllowedOrigins__0` | Allowed CORS origin | `http://localhost:4200` |

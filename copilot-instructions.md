@@ -1,4 +1,4 @@
-# Gatherly — Copilot Instructions
+# Plannivo — Copilot Instructions
 
 ## Architecture Rules
 
@@ -63,7 +63,7 @@ Controller → Service → Repository → PostgreSQL
 
 ### Testing
 - Unit tests: mock all dependencies with Moq
-- Integration tests: use `GatherlyWebApplicationFactory` (InMemory EF, no PostgreSQL needed)
+- Integration tests: use `PlannivoWebApplicationFactory` (InMemory EF, no PostgreSQL needed)
 - One test class per service/controller
 - Test happy path AND error/edge cases
 - Financial calculation tests must be extensive
@@ -71,16 +71,16 @@ Controller → Service → Repository → PostgreSQL
 ## File Naming and Locations
 
 ```
-src/Gatherly.Api/Controllers/         → XxxController.cs
-src/Gatherly.Services/Interfaces/     → IXxxService.cs
-src/Gatherly.Services/Implementations/→ XxxService.cs
-src/Gatherly.Repositories/Interfaces/ → IXxxRepository.cs
-src/Gatherly.Repositories/Implementations/ → XxxRepository.cs
-src/Gatherly.Repositories/Persistence/Entities/ → Xxx.cs
-src/Gatherly.Repositories/Persistence/Configurations/ → (EntityConfigurations.cs)
-src/Gatherly.Contracts/Xxx/           → XxxRequests.cs / XxxResponses.cs
-tests/Gatherly.UnitTests/Services/Xxx/ → XxxServiceTests.cs
-tests/Gatherly.IntegrationTests/Xxx/  → XxxControllerTests.cs
+src/Plannivo.Api/Controllers/         → XxxController.cs
+src/Plannivo.Services/Interfaces/     → IXxxService.cs
+src/Plannivo.Services/Implementations/→ XxxService.cs
+src/Plannivo.Repositories/Interfaces/ → IXxxRepository.cs
+src/Plannivo.Repositories/Implementations/ → XxxRepository.cs
+src/Plannivo.Repositories/Persistence/Entities/ → Xxx.cs
+src/Plannivo.Repositories/Persistence/Configurations/ → (EntityConfigurations.cs)
+src/Plannivo.Contracts/Xxx/           → XxxRequests.cs / XxxResponses.cs
+tests/Plannivo.UnitTests/Services/Xxx/ → XxxServiceTests.cs
+tests/Plannivo.IntegrationTests/Xxx/  → XxxControllerTests.cs
 ```
 
 ## API Response Structure
@@ -120,8 +120,8 @@ catch (Exception ex)
 ## DI Registration
 
 Add new services/repos to:
-- `src/Gatherly.Services/DependencyInjection.cs`
-- `src/Gatherly.Repositories/DependencyInjection.cs`
+- `src/Plannivo.Services/DependencyInjection.cs`
+- `src/Plannivo.Repositories/DependencyInjection.cs`
 
 ## Development Phases
 

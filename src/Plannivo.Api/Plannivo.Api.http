@@ -1,0 +1,82 @@
+@Plannivo.Api_HostAddress = http://localhost:5278
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Health check
+# ──────────────────────────────────────────────────────────────────────────────
+GET {{Plannivo.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Register
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{Plannivo.Api_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "firstName": "Alice",
+  "lastName": "Smith",
+  "email": "alice@example.com",
+  "password": "Password1!@"
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Login
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{Plannivo.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "Password1!@"
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Refresh token  (replace <refresh_token> with value from login response)
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{Plannivo.Api_HostAddress}}/api/v1/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "<refresh_token>"
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Get current user profile  (replace <access_token> with value from login)
+# ──────────────────────────────────────────────────────────────────────────────
+GET {{Plannivo.Api_HostAddress}}/api/v1/auth/me
+Authorization: ******
+Accept: application/json
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Logout  (replace <refresh_token> with value from login response)
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{Plannivo.Api_HostAddress}}/api/v1/auth/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "<refresh_token>"
+}
+
+###
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Auth — Forgot password
+# ──────────────────────────────────────────────────────────────────────────────
+POST {{Plannivo.Api_HostAddress}}/api/v1/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "alice@example.com"
+}
+
+###
