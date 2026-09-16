@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Plannivo.Api/Plannivo.Api.csproj" />
+    <Project Path="src/Plannivo.Contracts/Plannivo.Contracts.csproj" />
+    <Project Path="src/Plannivo.Repositories/Plannivo.Repositories.csproj" />
+    <Project Path="src/Plannivo.Services/Plannivo.Services.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Plannivo.IntegrationTests/Plannivo.IntegrationTests.csproj" />
+    <Project Path="tests/Plannivo.UnitTests/Plannivo.UnitTests.csproj" />
+  </Folder>
+</Solution>
