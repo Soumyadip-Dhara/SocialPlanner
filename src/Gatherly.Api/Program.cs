@@ -1,6 +1,7 @@
 using Gatherly.Api.Extensions;
 using Gatherly.Api.Middleware;
 using Gatherly.Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Gatherly.Repositories.Persistence.Context;
 using Serilog;
@@ -18,6 +19,15 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/gatherly-.log", rollingInterval: RollingInterval.Day));
+
+// ForwardedHeaders — let ASP.NET Core's middleware handle X-Forwarded-For securely.
+// By default only loopback addresses (127.0.0.1 / ::1) are trusted as proxies.
+// For production add real proxy IPs to KnownProxies via configuration or environment variables.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Do NOT clear KnownNetworks/KnownProxies — the defaults (loopback only) are safe.
+});
 
 // Services
 builder.Services.AddServices(builder.Configuration);
@@ -43,6 +53,8 @@ if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Docker"))
     db.Database.Migrate();
 }
 
+// UseForwardedHeaders must come before any middleware that reads the IP address.
+app.UseForwardedHeaders();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
 if (app.Environment.IsDevelopment())

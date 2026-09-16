@@ -215,12 +215,11 @@ public class AuthController : ControllerBase
     }
 
     private string GetIpAddress()
-    {
-        if (Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-            return forwardedFor.ToString().Split(',')[0].Trim();
-
-        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-    }
+        // ForwardedHeadersMiddleware (configured in Program.cs) already updates
+        // RemoteIpAddress from the X-Forwarded-For header when the request originates
+        // from a trusted proxy. Reading the header directly here is unsafe because any
+        // client can forge it — always use the already-resolved RemoteIpAddress instead.
+        => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
     private long? GetCurrentUserId()
     {
