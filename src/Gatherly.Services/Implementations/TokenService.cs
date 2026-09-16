@@ -17,7 +17,7 @@ public class TokenService : ITokenService
         _configuration = configuration;
     }
 
-    public string GenerateAccessToken(long userId, string email, IEnumerable<string> roles)
+    public string GenerateAccessToken(long userId, string email, IEnumerable<string> roles, DateTime expiry)
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secretKey = jwtSettings["SecretKey"]
@@ -43,7 +43,6 @@ public class TokenService : ITokenService
         foreach (var role in roles)
             claims.Add(new Claim(ClaimTypes.Role, role));
 
-        var expiry = GetAccessTokenExpiry();
         var token = new JwtSecurityToken(
             issuer: issuer,
             audience: audience,

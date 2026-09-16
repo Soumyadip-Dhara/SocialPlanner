@@ -60,7 +60,10 @@ public class AuthService : IAuthService
         }
 
         var roles = await _userRepository.GetRolesAsync(user.Id, cancellationToken);
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles);
+
+        // Compute expiry once — the same value is embedded in the JWT claim and returned to the client.
+        var accessTokenExpiry = _tokenService.GetAccessTokenExpiry();
+        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles, accessTokenExpiry);
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
         var tokenHash = _tokenService.HashToken(rawRefreshToken);
 
@@ -81,7 +84,7 @@ public class AuthService : IAuthService
         {
             AccessToken = accessToken,
             RefreshToken = rawRefreshToken,
-            AccessTokenExpiry = _tokenService.GetAccessTokenExpiry(),
+            AccessTokenExpiry = accessTokenExpiry,
             User = MapToUserDto(user, roles)
         };
     }
@@ -97,27 +100,29 @@ public class AuthService : IAuthService
             && user.IsActive
             && BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
 
+        // Always persist the login audit record — including for unknown email addresses.
+        // UserId is nullable so we can record failed attempts that have no matching user.
         await _userRepository.AddLoginActivityAsync(new LoginActivity
         {
-            UserId = user?.Id ?? 0,
+            UserId = user?.Id,
             IpAddress = ipAddress,
             Success = success,
             FailureReason = success ? null : "Invalid credentials"
         }, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
 
         if (!success)
         {
-            if (user is not null)
-                await _userRepository.SaveChangesAsync(cancellationToken);
-
-            _logger.LogWarning("Failed login attempt for email {Email} from {IpAddress}", request.Email, ipAddress);
+            // Log only the sanitized IP — never log email addresses in warnings to
+            // prevent log-injection and to reduce PII exposure.
+            _logger.LogWarning("Failed login attempt from {IpAddress}", SanitizeForLog(ipAddress));
             throw new UnauthorizedAccessException("Invalid email or password.");
         }
 
-        await _userRepository.SaveChangesAsync(cancellationToken);
-
         var roles = user!.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles);
+
+        var accessTokenExpiry = _tokenService.GetAccessTokenExpiry();
+        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles, accessTokenExpiry);
         var rawRefreshToken = _tokenService.GenerateRefreshToken();
         var tokenHash = _tokenService.HashToken(rawRefreshToken);
 
@@ -138,7 +143,7 @@ public class AuthService : IAuthService
         {
             AccessToken = accessToken,
             RefreshToken = rawRefreshToken,
-            AccessTokenExpiry = _tokenService.GetAccessTokenExpiry(),
+            AccessTokenExpiry = accessTokenExpiry,
             User = MapToUserDto(user, roles)
         };
     }
@@ -163,7 +168,9 @@ public class AuthService : IAuthService
         storedToken.RevokedAt = DateTime.UtcNow;
 
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles);
+
+        var accessTokenExpiry = _tokenService.GetAccessTokenExpiry();
+        var newAccessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, roles, accessTokenExpiry);
         var newRawRefreshToken = _tokenService.GenerateRefreshToken();
         var newTokenHash = _tokenService.HashToken(newRawRefreshToken);
 
@@ -185,7 +192,7 @@ public class AuthService : IAuthService
         {
             AccessToken = newAccessToken,
             RefreshToken = newRawRefreshToken,
-            AccessTokenExpiry = _tokenService.GetAccessTokenExpiry(),
+            AccessTokenExpiry = accessTokenExpiry,
             User = MapToUserDto(user, roles)
         };
     }
@@ -213,21 +220,23 @@ public class AuthService : IAuthService
     {
         var user = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
 
-        // Always return success to prevent email enumeration
+        // Always return success to prevent email enumeration.
+        // Do not log the email address here to avoid both log-injection and PII exposure.
         if (user is null || !user.IsActive)
         {
-            _logger.LogInformation("Password reset requested for unknown email: {Email}", request.Email);
+            _logger.LogInformation("Password reset requested for non-existent or inactive account");
             return;
         }
 
-        var token = _tokenService.GenerateRefreshToken(); // reuse cryptographic random generation
-        user.PasswordResetToken = token;
+        var rawToken = _tokenService.GenerateRefreshToken();
+        // Store only the hash — the raw token is sent in the email reset link.
+        user.PasswordResetToken = _tokenService.HashToken(rawToken);
         user.PasswordResetTokenExpiry = DateTime.UtcNow.AddHours(1);
 
         await _userRepository.UpdateAsync(user, cancellationToken);
         await _userRepository.SaveChangesAsync(cancellationToken);
 
-        // TODO: send email with reset link containing token
+        // TODO: send email with reset link containing rawToken (never the hash)
         _logger.LogInformation("Password reset token generated for user {UserId}", user.Id);
     }
 
@@ -235,7 +244,9 @@ public class AuthService : IAuthService
         ResetPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByResetTokenAsync(request.Token, cancellationToken);
+        // Hash the incoming token before querying — the database stores only hashes.
+        var tokenHash = _tokenService.HashToken(request.Token);
+        var user = await _userRepository.GetByResetTokenAsync(tokenHash, cancellationToken);
 
         if (user is null || user.Email != request.Email.ToLowerInvariant())
             throw new ArgumentException("Invalid or expired password reset token.");
@@ -251,6 +262,14 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("Password reset completed for user {UserId}", user.Id);
     }
+
+    /// <summary>
+    /// Strips CR and LF characters from user-supplied strings before they are written to
+    /// the log, preventing log-injection attacks (CWE-117 / OWASP log forging).
+    /// </summary>
+    private static string SanitizeForLog(string input) =>
+        input.Replace("\r", "\\r", StringComparison.Ordinal)
+             .Replace("\n", "\\n", StringComparison.Ordinal);
 
     public async Task ChangePasswordAsync(
         long userId,

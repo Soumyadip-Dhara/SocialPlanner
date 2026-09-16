@@ -2,8 +2,10 @@ using FluentAssertions;
 using Gatherly.Contracts.Authentication;
 using Gatherly.Repositories.Interfaces;
 using Gatherly.Repositories.Persistence.Entities;
+using Gatherly.Services.Implementations;
 using Gatherly.Services.Implementations.Authentication;
 using Gatherly.Services.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -54,21 +56,8 @@ public class AuthServiceTests
         _userRepoMock.Setup(r => r.EmailExistsAsync("new@example.com", default))
             .ReturnsAsync(false);
 
-        var savedUser = new User
-        {
-            Id = 1,
-            FirstName = "Bob",
-            LastName = "Jones",
-            Email = "new@example.com",
-            PasswordHash = "hashed",
-            IsActive = true
-        };
-
         _userRepoMock.Setup(r => r.AddAsync(It.IsAny<User>(), default))
-            .Callback<User, CancellationToken>((u, _) =>
-            {
-                u.Id = 1;
-            })
+            .Callback<User, CancellationToken>((u, _) => { u.Id = 1; })
             .Returns(Task.CompletedTask);
 
         _userRepoMock.Setup(r => r.SaveChangesAsync(default)).ReturnsAsync(1);
@@ -79,12 +68,14 @@ public class AuthServiceTests
         _userRepoMock.Setup(r => r.GetRolesAsync(It.IsAny<long>(), default))
             .ReturnsAsync(new[] { "User" });
 
-        _tokenServiceMock.Setup(t => t.GenerateAccessToken(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>()))
+        var expiry = DateTime.UtcNow.AddMinutes(15);
+        _tokenServiceMock.Setup(t => t.GetAccessTokenExpiry()).Returns(expiry);
+        _tokenServiceMock
+            .Setup(t => t.GenerateAccessToken(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<IEnumerable<string>>(), expiry))
             .Returns("access_token");
         _tokenServiceMock.Setup(t => t.GenerateRefreshToken()).Returns("raw_refresh");
         _tokenServiceMock.Setup(t => t.HashToken("raw_refresh")).Returns("hashed_refresh");
         _tokenServiceMock.Setup(t => t.GetRefreshTokenExpiry()).Returns(DateTime.UtcNow.AddDays(7));
-        _tokenServiceMock.Setup(t => t.GetAccessTokenExpiry()).Returns(DateTime.UtcNow.AddMinutes(15));
 
         _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>(), default))
             .Returns(Task.CompletedTask);
@@ -103,6 +94,7 @@ public class AuthServiceTests
         result.Should().NotBeNull();
         result.AccessToken.Should().Be("access_token");
         result.RefreshToken.Should().Be("raw_refresh");
+        result.AccessTokenExpiry.Should().Be(expiry);
         result.User.Email.Should().Be("new@example.com");
     }
 
@@ -115,6 +107,8 @@ public class AuthServiceTests
             .ReturnsAsync((User?)null);
         _userRepoMock.Setup(r => r.AddLoginActivityAsync(It.IsAny<LoginActivity>(), default))
             .Returns(Task.CompletedTask);
+        // SaveChanges is always called — even for unknown-email login attempts (audit log).
+        _userRepoMock.Setup(r => r.SaveChangesAsync(default)).ReturnsAsync(1);
 
         var request = new LoginRequest { Email = "bad@example.com", Password = "wrong" };
 
@@ -212,30 +206,23 @@ public class AuthServiceTests
         await act.Should().NotThrowAsync();
     }
 
-    // ── TokenService ─────────────────────────────────────────────────────────
+    // ── TokenService (real implementation) ───────────────────────────────────
 
     [Fact]
-    public void HashToken_ProducesDeterministicAndUniqueHashes()
+    public void TokenService_HashToken_ProducesDeterministicAndUniqueHashes()
     {
-        // Verify hash behaviour using the mock token service
-        // (real TokenService is exercised in integration tests)
-        var tokenServiceMock = new Mock<ITokenService>();
-        tokenServiceMock
-            .Setup(t => t.HashToken(It.IsAny<string>()))
-            .Returns<string>(token =>
-            {
-                // Replicate the real SHA-256 hash logic inline
-                var bytes = System.Security.Cryptography.SHA256.HashData(
-                    System.Text.Encoding.UTF8.GetBytes(token));
-                return Convert.ToBase64String(bytes);
-            });
+        // Instantiate the real TokenService to validate its production implementation.
+        var configMock = new Mock<IConfiguration>();
+        configMock.Setup(c => c["JwtSettings:AccessTokenExpiryMinutes"]).Returns("15");
+        configMock.Setup(c => c["JwtSettings:RefreshTokenExpiryDays"]).Returns("7");
+        var tokenService = new TokenService(configMock.Object);
 
-        var hash1 = tokenServiceMock.Object.HashToken("token_a");
-        var hash2 = tokenServiceMock.Object.HashToken("token_b");
-        var hash1Again = tokenServiceMock.Object.HashToken("token_a");
+        var hash1 = tokenService.HashToken("token_a");
+        var hash2 = tokenService.HashToken("token_b");
+        var hash1Again = tokenService.HashToken("token_a");
 
-        hash1.Should().NotBe(hash2);
-        hash1.Should().Be(hash1Again);
+        hash1.Should().NotBe(hash2, "different inputs must produce different hashes");
+        hash1.Should().Be(hash1Again, "the same input must always produce the same hash");
         hash1.Should().NotBeNullOrEmpty();
     }
 }

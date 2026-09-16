@@ -2,11 +2,15 @@ namespace Gatherly.Repositories.Persistence.Entities;
 
 public class LoginActivity : BaseEntity
 {
-    public long UserId { get; set; }
+    /// <summary>
+    /// Nullable — login attempts for email addresses that don't correspond to any user
+    /// must still be recorded for audit purposes without violating the FK constraint.
+    /// </summary>
+    public long? UserId { get; set; }
     public string IpAddress { get; set; } = string.Empty;
     public string? UserAgent { get; set; }
     public bool Success { get; set; }
     public string? FailureReason { get; set; }
 
-    public User User { get; set; } = null!;
+    public User? User { get; set; }
 }

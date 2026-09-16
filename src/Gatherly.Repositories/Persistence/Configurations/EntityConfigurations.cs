@@ -101,6 +101,7 @@ public class LoginActivityConfiguration : IEntityTypeConfiguration<LoginActivity
         builder.HasOne(la => la.User)
             .WithMany(u => u.LoginActivities)
             .HasForeignKey(la => la.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

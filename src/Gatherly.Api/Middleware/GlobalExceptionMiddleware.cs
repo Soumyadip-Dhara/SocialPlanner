@@ -24,12 +24,22 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
+            // Sanitize user-controlled values before logging to prevent log-injection.
             _logger.LogError(ex, "Unhandled exception occurred for request {Method} {Path}",
-                context.Request.Method, context.Request.Path);
+                SanitizeForLog(context.Request.Method),
+                SanitizeForLog(context.Request.Path.ToString()));
 
             await HandleExceptionAsync(context, ex);
         }
     }
+
+    /// <summary>
+    /// Strips CR/LF characters from user-supplied strings before they reach the log,
+    /// preventing log-injection (CWE-117 / OWASP log forging).
+    /// </summary>
+    private static string SanitizeForLog(string input) =>
+        input.Replace("\r", "\\r", StringComparison.Ordinal)
+             .Replace("\n", "\\n", StringComparison.Ordinal);
 
     private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
