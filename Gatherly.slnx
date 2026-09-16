@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Gatherly.Api/Gatherly.Api.csproj" />
+    <Project Path="src/Gatherly.Contracts/Gatherly.Contracts.csproj" />
+    <Project Path="src/Gatherly.Repositories/Gatherly.Repositories.csproj" />
+    <Project Path="src/Gatherly.Services/Gatherly.Services.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Gatherly.IntegrationTests/Gatherly.IntegrationTests.csproj" />
+    <Project Path="tests/Gatherly.UnitTests/Gatherly.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: gatherly-postgres
+    environment:
+      POSTGRES_USER: gatherly
+      POSTGRES_PASSWORD: gatherly_secret
+      POSTGRES_DB: gatherly
+    ports:
+      - "5432:5432"
+    volumes:
+      - gatherly_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gatherly -d gatherly"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: gatherly-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=gatherly;Username=gatherly;******"
+      JwtSettings__SecretKey: "${JWT_SECRET_KEY:-change-this-in-production-must-be-at-least-32-chars}"
+      JwtSettings__Issuer: Gatherly
+      JwtSettings__Audience: GatherlyUsers
+      JwtSettings__AccessTokenExpiryMinutes: "15"
+      JwtSettings__RefreshTokenExpiryDays: "7"
+      Cors__AllowedOrigins__0: "http://localhost:4200"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  gatherly_pgdata:
